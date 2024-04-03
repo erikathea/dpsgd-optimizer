@@ -154,16 +154,16 @@ def main():
         train_loss = train_mean_loss.result()
         train_acc_scores.append(train_acc)
         train_loss_scores.append(train_loss)
-        train_acc_metric.reset_states()
-        train_mean_loss.reset_states()
+        train_acc_metric.reset_state()
+        train_mean_loss.reset_state()
         
         # Update validation scores
         valid_acc = valid_acc_metric.result()
         valid_loss = valid_mean_loss.result()
         valid_acc_scores.append(valid_acc)
         valid_loss_scores.append(valid_loss)
-        valid_acc_metric.reset_states()
-        valid_mean_loss.reset_states()
+        valid_acc_metric.reset_state()
+        valid_mean_loss.reset_state()
         
         if epoch % 10 == 0:
             for metric in test_metrics:
