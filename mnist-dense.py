@@ -21,14 +21,14 @@ DATASET = 'mnist'
 MODEL_TYPE = 'dense'
 USE_PRIVACY = True
 PLOT_RESULTS = True
-N_EPOCHS = 10
+N_EPOCHS = 20
 
 def main():
     X_train, y_train, X_test, y_test = load_mnist()
     num_classes = 10
     image_size = 28
     n_channels = 1
-                    
+
     # Create train/valid set
     X_train, y_train, X_valid, y_valid = shuffle_split_data(X_train, y_train)
 
@@ -82,22 +82,21 @@ def main():
                 loss = tf.add_n([main_loss] + model.losses)
                 train_acc_metric.update_state(y_batch, y_pred)
             gradients = tape.gradient(loss, model.trainable_variables)
-            if USE_PRIVACY:
-                sanitized_grads = []
-                eps_delta = EpsDelta(eps, delta)
-                for px_grad in gradients:
-                    sanitized_grad = sanitizer.sanitize(px_grad, eps_delta, SIGMA)
-                    sanitized_grads.append(sanitized_grad)
-                spent_eps_delta = accountant.get_privacy_spent(target_eps=target_eps)[0]
-                optimizer.apply_gradients(zip(sanitized_grads, model.trainable_variables))
-                if (spent_eps_delta.spent_eps > max_eps or spent_eps_delta.spent_delta > max_delta):
-                    should_terminate = True
-            else:
-                optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+
+            sanitized_grads = []
+            eps_delta = EpsDelta(eps, delta)
+            for px_grad in gradients:
+                sanitized_grad = sanitizer.sanitize(px_grad, eps_delta, SIGMA)
+                sanitized_grads.append(sanitized_grad)
+            spent_eps_delta = accountant.get_privacy_spent(target_eps=target_eps)[0]
+            optimizer.apply_gradients(zip(sanitized_grads, model.trainable_variables))
+            if (spent_eps_delta.spent_eps > max_eps or spent_eps_delta.spent_delta > max_delta):
+                should_terminate = True
+
             train_mean_loss(loss)
             for metric in train_metrics:
                 metric(y_batch, y_pred)
-            if step % 200 == 0:
+            if step % 100 == 0:
                 time_taken = time.time() - start_time
                 for metric in valid_metrics:
                     X_batch, y_batch = random_batch(X_valid, y_valid)
@@ -107,12 +106,10 @@ def main():
                     valid_mean_loss(loss)
                     valid_acc_metric.update_state(y_batch, y_pred)
                     metric(y_batch, y_pred)
-                if USE_PRIVACY:
-                    print_status_bar(step * BATCH_SIZE, len(y_train), train_mean_loss, time_taken,
+
+                print_status_bar(step * BATCH_SIZE, len(y_train), train_mean_loss, time_taken,
                                      train_metrics + valid_metrics, spent_eps_delta,) 
-                else:
-                    print_status_bar(step * BATCH_SIZE, len(y_train), train_mean_loss, time_taken,
-                                     train_metrics + valid_metrics)
+
             if should_terminate:
                 break
             
